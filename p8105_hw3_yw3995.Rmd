@@ -28,3 +28,206 @@ options(
 scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
+
+# Problem 1
+
+```{r}
+data("instacart")
+
+instacart = 
+  instacart |> 
+  as_tibble()
+```
+
+* Conclusions
+
+  * The data "instacart" have **`r ncol(instacart)`** variables and **`r nrow(instacart)`** observations, with each row resprenting a single product from an instacart order. Variables include identifiers for user, order, and product; the order in which each product was added to the cart. 
+  * The data "instacart" contains **`r names(instacart)`** and the key variables are **order_dow, order_hour_of_day, product_name, and aisle**.
+  * I find that each department has many aisles, and each aisle has many product_names. All eval_sets are train.
+  * There are several order-level variables, describing the day and time of the order, and number of days since prior order. Then there are several item-specific variables, describing the product name (e.g. Yogurt, Avocado), department (e.g. dairy and eggs, produce), and aisle (e.g. yogurt, fresh fruits), and whether the item has been ordered by this user in the past. In total, there are **`r instacart |> select(product_id) |> distinct() |> count()`** products found in **`r instacart |> select(user_id, order_id) |> distinct() |> count()`** orders from **`r instacart |> select(user_id) |> distinct() |> count()`** distinct users.
+  
+### Questions
+    
+```{r, message = FALSE}
+instacart_aisle = 
+  select(instacart, aisle) |> 
+  count(aisle, name = "quantity") |> 
+  arrange(desc(quantity))
+
+instacart_aisle
+```
+
+* How many aisles are there, and which aisles are the most items ordered from?
+  
+  * There are **`r nrow(instacart_aisle)`** aisles, **fresh fruits** and **fresh vegetables** are the most items ordered.
+    
+* Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+  
+```{r, message = FALSE}
+plot_instacart_aisle = 
+  filter(instacart_aisle, quantity > 10000) |> 
+  arrange(desc(quantity)) 
+
+ggplot(plot_instacart_aisle, aes(x = quantity, y = reorder(aisle, -quantity))) +
+  geom_bar(stat = "identity", fill = "pink") +
+  labs(x = "Total Number of Items Ordered", 
+       y = "Aisle",
+       title = "Number of Items Ordered in Each Aisle") +
+  theme_minimal() 
+```
+
+  * This is a bar chat about the number of items ordered (>10000) in each aisle, which includes **`r nrow(plot_instacart_aisle)`** aisles. Here, aisles are ordered by ascending number of items.
+
+* Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+  * This is a 9*3 table about the three most popular items and their ordered number in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
+  
+```{r, message = FALSE}
+instacart_three_aisles = instacart |> 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) |> 
+  group_by(aisle) |> 
+  count(product_name) |> 
+  mutate(rank = min_rank(desc(n))) |> 
+  filter(rank <= 3) |> 
+  arrange(desc(n)) |>
+  knitr::kable()
+
+instacart_three_aisles
+```
+
+* Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+  * This is a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week. This table has been formatted in an untidy manner for human readers. Pink Lady Apples are generally purchased slightly earlier in the day than Coffee Ice Cream, with the exception of day 5.
+  
+```{r}
+instacart_mean_hour = instacart |>
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) |>
+  group_by(product_name, order_dow) |>
+  summarize(mean_hour = mean(order_hour_of_day)) |>
+  mutate(order_dow = recode(order_dow, "0" = "Sunday", "1" = "Monday", "2" = "Tuesday", "3" = "Wednesday", "4" = "Thursday", "5" = "Friday", "6" = "Saturday")) |> 
+  pivot_wider(
+    names_from = order_dow, 
+    values_from = mean_hour) |>
+  knitr::kable(digits = 2)
+
+instacart_mean_hour
+```
+
+# Problem 2
+
+```{r}
+data("brfss_smart2010")
+
+brfss_smart2010 = 
+  brfss_smart2010 |> 
+  as_tibble()
+```
+
+## Data cleaning
+
+```{r, message = FALSE}
+brfss_smart2010 = brfss_smart2010 |> 
+  filter(Topic == "Overall Health", Response %in% c("Poor", "Fair", "Good", "Very good", "Excellent")) |> 
+  mutate(Response = factor(Response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"))) |> 
+  rename(State = Locationabbr, Location = Locationdesc)
+
+brfss_smart2010
+```
+
+### Questions
+
+```{r, message = FALSE}
+brfss_smart_2002 = brfss_smart2010 |> 
+  filter(Year == "2002") |> 
+  group_by(State) |> 
+  summarise(Location_count = n_distinct(Location)) |> 
+  filter(Location_count >= 7) |> 
+  pivot_wider(
+    names_from = State, values_from = Location_count
+  )
+
+brfss_smart_2002
+```
+
+```{r, message = FALSE}
+brfss_smart_2010 = brfss_smart2010 |> 
+  filter(Year == "2010") |> 
+  group_by(State) |> 
+  summarise(Location_count = n_distinct(Location)) |>  
+  filter(Location_count >= 7) |> 
+  pivot_wider(
+    names_from = State, values_from = Location_count
+  )
+
+brfss_smart_2010
+```
+
+* In 2002, which states were observed at 7 or more locations? What about in 2010?
+  * **`r names(brfss_smart_2002)`** were observed at 7 or more locations in 2002, and **`r names(brfss_smart_2010)`** were observed at 7 or more locations in 2010.
+
+* Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
+  
+```{r, message = FALSE}
+excellent_brfss_smart = brfss_smart2010 |> 
+  filter(Response == "Excellent") |> 
+  select(Year, State, Data_value) |> 
+  group_by(Year, State) |> 
+  summarize(Average_value = mean(Data_value)) |> 
+  drop_na()
+```
+
+```{r, message = FALSE}
+excellent_brfss_smart |>
+  ggplot(aes(x = Year, y = Average_value, color = State)) + 
+  geom_point() + 
+  geom_line() + 
+  theme(legend.position = "right") +
+  labs(title = "Average Value Over Time Within Each State Across Years")
+```
+
+  * This is a line graph about the average value over time within each state across years limited to Excellent responses, which contains **`r nrow(excellent_brfss_smart)`** states.
+  * All the states have the generally average value **range** from 18 to 27.
+
+* Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+  * This is a **boxplot** about the distribution of data value for responses among locations in NY State in 2006 and 2010. We can find that the range of "Very good" data values in 2010 is larger than that in 2006, whereas the range of "Good" data values in 2006 is larger than that in 2010. The **median values** of all responses in 2006 and 2010 are almost the **same**.
+  
+```{r, message = FALSE}
+NY_brfss_smart_2006 = brfss_smart2010 |>  
+  filter(Year == "2006", State == "NY") |> 
+  select(Year, Data_value, Response, Location)
+
+plot_2006 = 
+  NY_brfss_smart_2006 |> 
+  ggplot(aes(x = Response, y = Data_value)) +
+  geom_boxplot() +
+  labs(
+    x = "Response",
+    y = "Data Value",
+    title = "Distribution of Data Value for Responses in NY State (Year 2006)"
+  ) +
+  scale_fill_discrete(name = "Location") +
+  theme_minimal()
+```
+
+```{r, message = FALSE}
+NY_brfss_smart_2010 = brfss_smart2010 |>  
+  filter(Year == "2010", State == "NY") |> 
+  select(Year, Data_value, Response, Location) 
+
+plot_2010 = 
+  NY_brfss_smart_2010 |> 
+  ggplot(aes(x = Response, y = Data_value)) +
+  geom_boxplot() +
+  labs(
+    x = "Response",
+    y = "Data Value",
+    title = "Distribution of Data Value for Responses in NY State (Year 2010)"
+  ) +
+  scale_fill_discrete(name = "Location") +
+  theme_minimal()
+```
+
+```{r}
+plot_2006 / plot_2010
+```
