@@ -231,3 +231,117 @@ plot_2010 =
 ```{r}
 plot_2006 / plot_2010
 ```
+
+# Problem 3
+
+## Load and tidy data sets
+
+```{r, message = FALSE}
+nhanes_covar = 
+  read.csv("./data/nhanes_covar.csv", skip = 4) |> 
+  janitor::clean_names() |> 
+  mutate(
+    sex = ifelse(sex == 1, "male", "female")) |> 
+  mutate(
+    education = ifelse(education == 1, "Less than high school", 
+                       ifelse(education == 2, "High school equivalent", 
+                              "More than high school"))
+  ) |> 
+  filter(age >= "21")
+```
+
+```{r, message = FALSE}
+nhanes_accel = 
+  read.csv("./data/nhanes_accel.csv") |> 
+  janitor::clean_names()
+```
+
+## Merge and organize data sets
+
+```{r, message = FALSE}
+merge_nhanes = full_join(nhanes_covar, nhanes_accel, by = c("seqn")) |> 
+  drop_na()
+```
+
+### Questions
+
+* Produce a reader-friendly table for the number of men and women in each education category.
+
+  * This is a 3*4 table about the number of men and women in each education category (High school equivalent, Less than high school, and More than high school). 
+  * We can find that men and women have the **similar** average number of "Less than high school" and "More than high school", but the number of "High school equivalent" in male is **12 higher** than that in female.
+  
+```{r, message = FALSE}
+sex_nhanes = merge_nhanes |> 
+  group_by(sex, education) |> 
+  summarise(quantity = n()) |> 
+  pivot_wider(
+    names_from = sex,
+    values_from = quantity
+  ) |> 
+  knitr::kable()
+
+sex_nhanes
+```
+  
+* create a visualization of the age distributions for men and women in each education category. 
+
+```{r}
+age_nhanes = merge_nhanes |> 
+  select(age, sex, education)
+  
+ggplot(age_nhanes, aes(x = age, fill = sex)) +
+  geom_histogram(binwidth = 5, position = "dodge") +
+  facet_wrap(~ education, ncol = 3) +
+  labs(x = "Age", y = "Count") +
+  ggtitle("Age Distribution by Education Category") +
+  theme_minimal()
+```
+
+  * This is a bar chat about the age distributions for men and women in each education category, which  includes **`r nrow(age_nhanes)`** participates. We can find that **more participates** in "More than high school" education category for men and women, and between the ages of 20 and 40, a greater proportion of women than men are **"More than high school"**.
+
+* Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+  * The graph **presents** three panels, each corresponding to a different education level, to illustrate the variations in total daily activity for males and females across different age groups.
+  * In all three panels, the x-axis represents age, while the y-axis represents total activity. The data **reveals** how the total activity levels change with age for both males and females in these education categories.
+  * The analysis reveals that as age **increases**, total activity **decreases** generally in all three education levels. However, this **decrease** is more pronounced in the **"Less than high school"** level compared to the other education levels.
+  * Additionally, the data shows that, in general, females tend to have **higher** total activity levels than males in the two higher education levels. However, in the **"Less than high school"** education level, males exhibit **higher** total activity levels than females.
+
+```{r}
+activity_nhanes = merge_nhanes |> 
+  gather(key = "minute", value = "activity", starts_with("min")) |> 
+  group_by(seqn, sex, education, age) |> 
+  summarize(total_activity = sum(activity))
+
+ggplot(activity_nhanes, aes(x = age, y = total_activity, color = sex)) +
+  geom_point(alpha = .5) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~ education, ncol = 3) +
+  scale_color_manual(values = c("pink", "skyblue")) +
+  labs(x = "Age", y = "Total Activity") +
+  ggtitle("Total Activity Over the Day") +
+  theme_minimal()
+```
+
+* Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+
+  * The graph **presents** three panels, each corresponding to a different education level, to illustrate the variations in mean activity value for males and females across the minute of the day.
+  * In all three panels, the x-axis represents minute of the day, while the y-axis represents mean activity value. The data **reveals** how the mean activity value change with age for both males and females in these education categories.
+  * The analysis reveals that in all three education levels, there is a **cyclical pattern** in mean activity levels as time progresses throughout the day. Initially, mean activity **decreases** slightly, followed by a rapid **increase**, and eventually, it **decreases** to its initial value.
+  * Additionally, the data shows that, on average, females tend to have **higher** mean activity levels than males in the two higher education levels. However, in the **"Less than high school"** education level, the activity patterns of males and females **closely** align, showing similar levels of mean activity.
+
+```{r}
+activity24_nhanes = merge_nhanes |> 
+  gather(key = "minute", value = "activity", starts_with("min")) |> 
+  mutate(minute = as.numeric(gsub("min", "", minute))) |> 
+  group_by(education, sex, minute) |> 
+  summarize(mean_activity = mean(activity))
+
+ggplot(activity24_nhanes, aes(x = minute, y = mean_activity, color = sex)) +
+  geom_point(alpha = .2) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~ education, ncol = 3) +
+  scale_color_manual(values = c("red", "orange")) +
+  labs(x = "Minute of the Day", y = "Mean Activity Value") +
+  ggtitle("Activity Over the Course of The Day") +
+  theme_minimal()
+```
