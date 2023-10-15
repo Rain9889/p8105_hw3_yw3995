@@ -243,24 +243,33 @@ nhanes_covar =
   mutate(
     sex = ifelse(sex == 1, "male", "female")) |> 
   mutate(
-    education = ifelse(education == 1, "Less than high school", 
-                       ifelse(education == 2, "High school equivalent", 
-                              "More than high school"))
+    education = recode(education,
+                       `1` = "less than high school",
+                       `2` = "high school equivalent",
+                       `3` = "more than high school")
   ) |> 
-  filter(age >= "21")
+  arrange(education) |> 
+  filter(age >= "21") |> 
+  drop_na()
 ```
 
 ```{r, message = FALSE}
 nhanes_accel = 
   read.csv("./data/nhanes_accel.csv") |> 
-  janitor::clean_names()
+  janitor::clean_names() |> 
+  pivot_longer(
+    min1:min1440,
+    names_to = "min",
+    values_to = "activity",
+    names_prefix = "min"
+  ) |> 
+  mutate(min = as.numeric(min))
 ```
 
 ## Merge and organize data sets
 
 ```{r, message = FALSE}
-merge_nhanes = full_join(nhanes_covar, nhanes_accel, by = c("seqn")) |> 
-  drop_na()
+merge_nhanes = left_join(nhanes_covar, nhanes_accel, by = c("seqn"))
 ```
 
 ### Questions
@@ -271,7 +280,7 @@ merge_nhanes = full_join(nhanes_covar, nhanes_accel, by = c("seqn")) |>
   * We can find that men and women have the **similar** average number of "Less than high school" and "More than high school", but the number of "High school equivalent" in male is **12 higher** than that in female.
   
 ```{r, message = FALSE}
-sex_nhanes = merge_nhanes |> 
+sex_nhanes = nhanes_covar |> 
   group_by(sex, education) |> 
   summarise(quantity = n()) |> 
   pivot_wider(
@@ -308,7 +317,6 @@ ggplot(age_nhanes, aes(x = age, fill = sex)) +
 
 ```{r}
 activity_nhanes = merge_nhanes |> 
-  gather(key = "minute", value = "activity", starts_with("min")) |> 
   group_by(seqn, sex, education, age) |> 
   summarize(total_activity = sum(activity))
 
@@ -331,12 +339,10 @@ ggplot(activity_nhanes, aes(x = age, y = total_activity, color = sex)) +
 
 ```{r}
 activity24_nhanes = merge_nhanes |> 
-  gather(key = "minute", value = "activity", starts_with("min")) |> 
-  mutate(minute = as.numeric(gsub("min", "", minute))) |> 
-  group_by(education, sex, minute) |> 
+  group_by(education, sex, min) |> 
   summarize(mean_activity = mean(activity))
 
-ggplot(activity24_nhanes, aes(x = minute, y = mean_activity, color = sex)) +
+ggplot(activity24_nhanes, aes(x = min, y = mean_activity, color = sex)) +
   geom_point(alpha = .2) +
   geom_smooth(se = FALSE) +
   facet_wrap(~ education, ncol = 3) +
