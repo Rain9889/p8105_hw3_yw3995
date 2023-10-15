@@ -99,7 +99,7 @@ instacart_three_aisles
 
   * This is a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week. This table has been formatted in an untidy manner for human readers. Pink Lady Apples are generally purchased slightly earlier in the day than Coffee Ice Cream, with the exception of day 5.
   
-```{r}
+```{r, message = FALSE}
 instacart_mean_hour = instacart |>
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) |>
   group_by(product_name, order_dow) |>
@@ -115,7 +115,7 @@ instacart_mean_hour
 
 # Problem 2
 
-```{r}
+```{r, message = FALSE}
 data("brfss_smart2010")
 
 brfss_smart2010 = 
@@ -185,7 +185,7 @@ excellent_brfss_smart |>
   labs(title = "Average Value Over Time Within Each State Across Years")
 ```
 
-  * This is a line graph about the average value over time within each state across years limited to Excellent responses, which contains **`r nrow(excellent_brfss_smart)`** states.
+  * This is a line graph about the average value over time within each state across years limited to Excellent responses, which contains **51** states.
   * All the states have the generally average value **range** from 18 to 27.
 
 * Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
@@ -228,7 +228,7 @@ plot_2010 =
   theme_minimal()
 ```
 
-```{r}
+```{r, message = FALSE}
 plot_2006 / plot_2010
 ```
 
@@ -246,7 +246,8 @@ nhanes_covar =
     education = recode(education,
                        `1` = "less than high school",
                        `2` = "high school equivalent",
-                       `3` = "more than high school")
+                       `3` = "more than high school"),
+    education = factor(education, levels = c("less than high school", "high school equivalent", "more than high school"))
   ) |> 
   arrange(education) |> 
   filter(age >= "21") |> 
@@ -294,7 +295,7 @@ sex_nhanes
   
 * create a visualization of the age distributions for men and women in each education category. 
 
-```{r}
+```{r, message = FALSE}
 age_nhanes = merge_nhanes |> 
   select(age, sex, education)
   
@@ -315,10 +316,11 @@ ggplot(age_nhanes, aes(x = age, fill = sex)) +
   * The analysis reveals that as age **increases**, total activity **decreases** generally in all three education levels. However, this **decrease** is more pronounced in the **"Less than high school"** level compared to the other education levels.
   * Additionally, the data shows that, in general, females tend to have **higher** total activity levels than males in the two higher education levels. However, in the **"Less than high school"** education level, males exhibit **higher** total activity levels than females.
 
-```{r}
+```{r, message = FALSE}
 activity_nhanes = merge_nhanes |> 
   group_by(seqn, sex, education, age) |> 
-  summarize(total_activity = sum(activity))
+  summarize(total_activity = sum(activity)) |> 
+  distinct()
 
 ggplot(activity_nhanes, aes(x = age, y = total_activity, color = sex)) +
   geom_point(alpha = .5) +
@@ -337,7 +339,7 @@ ggplot(activity_nhanes, aes(x = age, y = total_activity, color = sex)) +
   * The analysis reveals that in all three education levels, there is a **cyclical pattern** in mean activity levels as time progresses throughout the day. Initially, mean activity **decreases** slightly, followed by a rapid **increase**, and eventually, it **decreases** to its initial value.
   * Additionally, the data shows that, on average, females tend to have **higher** mean activity levels than males in the two higher education levels. However, in the **"Less than high school"** education level, the activity patterns of males and females **closely** align, showing similar levels of mean activity.
 
-```{r}
+```{r, message = FALSE}
 activity24_nhanes = merge_nhanes |> 
   group_by(education, sex, min) |> 
   summarize(mean_activity = mean(activity))
